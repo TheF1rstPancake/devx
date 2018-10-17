@@ -2,18 +2,38 @@ const axios = require('axios');
 const database = require('./database');
 const stackoverflow = require('./stackoverflow');
 
+async function bulkWriteDocuments(collection, bulkWrite, options) {
+  options = options === undefined || options === null ? {} : options;
+
+  // write the data to Mongo and set up the next search
+  console.log(`Writing ${ bulkWrite.length } documents`);
+  try {
+    await collection.bulkWrite(bulkWrite, { ordered: false });
+    console.log(`Wrote ${ bulkWrite.length } documents`);
+
+  } catch (err) {
+    console.log('Issue bulk writing documents: ', err); 
+  }
+ 
+  // we can optionally choose to return failed writes
+  // by default, we will return an empty list
+  // if this is true, then we will return all of the failed documents so that the next write can try
+  if (options.return_failed_writes !== true) {
+    bulkWrite = [];
+  }
+
+  return bulkWrite;
+}
+
 async function scrape_product(mongo, product_name, options) {
   options = options === undefined ? {} : options;
-  // create the document for the product
-  // we won't do anything with the document until the end of this function
-  await database.create_product(mongo, 'wepay');
+ 
   
-  // get the StackOverflow collection
+   // get the StackOverflow collection and ensure we've given it the right indeces
   var collection = await mongo.collection('StackOverflow');
 
   // initialize variables
   var promise_list = [];
-  var id_list = [];
   var has_more = true;
   var page = 1;
 
@@ -26,6 +46,7 @@ async function scrape_product(mongo, product_name, options) {
   };
   var params = Object.assign({}, default_params, options);
 
+  let bulkWrite = [];      
   while (has_more === true) {
     // update the page before each search
     params.page = page;
@@ -33,14 +54,16 @@ async function scrape_product(mongo, product_name, options) {
 
     // define the bulk write operations
     // and do some basic clean up of the data
-    let bulkWrite = [];      
     for (var i in data.items) {
-      let id = data.items[i].question_id;
-      data.items[i].id = id;
-      id_list.push(id);
+      let document = data.items[i];
+      let id = document.question_id;
+      document.id = id;
+      document.search_term = product_name;
+
+      // write the document.  If it already exists, perform an update.  If it's new, then insert (upsert=true)
       bulkWrite.push(
         { updateOne: {
-          filter: { id: id }, 
+          filter: { id: id, search_term: product_name }, 
           update: data.items[i], 
           w: 1,
           upsert: true
@@ -48,29 +71,19 @@ async function scrape_product(mongo, product_name, options) {
       );
     }
 
-    if (bulkWrite.length > 0) {
-      // write the data to Mongo and set up the next search
-      console.log(`Writing items to StackOverflow collection (page: ${ page }) `);
-      var p = collection.bulkWrite(bulkWrite, { ordered: false });
-      promise_list.push(p);
+    if (bulkWrite.length > 1000) {
+      bulkWrite = await bulkWriteDocuments(collection, bulkWrite);
     }
     has_more = data.has_more;
     page++;
   }
 
-  // now write the list of question IDs to the Product
-  if (id_list.length > 0) {
-    console.log(`Writing StackOverflow ids to Product ${ product_name }`);
-    var products = await mongo.collection('Product');
-    var p = products.updateOne(
-      { name: product_name },  
-      { $addToSet: { questions: { $each: id_list } } },
-      { upsert: true }
-    );
-    promise_list.push(p);
+  // clear out the last set of documents to write
+  if (bulkWrite.length > 0) {
+    bulkWrite = await bulkWriteDocuments(collection, bulkWrite);
   }
-  var r = await Promise.all(promise_list);
-  return r;
+
+  return;
 }
 
 database.get().then(async(mongo) => {
@@ -82,7 +95,7 @@ database.get().then(async(mongo) => {
     pagesize: 100
   };
 
-  var products_to_scrape = ['wepay', 'stripe', 'paypal', 'braintree', 'adyen', 'amazon payments', 'authorize.net'];
+  var products_to_scrape = ['wepay', 'stripe', 'paypal', 'braintree', 'adyen', 'amazon payments', 'authorize.net', 'airtable'];
 
   for (var i in products_to_scrape) {
     promise_list.push(

@@ -13,7 +13,9 @@ var initializers = {
       throw err;
     }
     // create indeces
-    collection.createIndex({ id: 1 }, { unique: true });
+    await collection.createIndex({ id: 1 });
+    await collection.createIndex({ search_term: 1 });
+    await collection.createIndex({ id: 1, search_term: 1 }, { unique: true });
   },
   Products: async(db) => {
     try {  
