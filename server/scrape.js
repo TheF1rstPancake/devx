@@ -1,6 +1,8 @@
 const axios = require('axios');
 const database = require('./database');
+const Promise = require('bluebird');
 const stackoverflow = require('./stackoverflow');
+
 
 async function bulkWriteDocuments(collection, bulkWrite, options) {
   options = options === undefined || options === null ? {} : options;
@@ -28,14 +30,13 @@ async function bulkWriteDocuments(collection, bulkWrite, options) {
 async function scrape_product(mongo, product_name, options) {
   options = options === undefined ? {} : options;
  
-  
    // get the StackOverflow collection and ensure we've given it the right indeces
   var collection = await mongo.collection('StackOverflow');
 
   // initialize variables
-  var promise_list = [];
   var has_more = true;
   var page = 1;
+  var num_documents = 0;
 
   // define the params to send to the stackexchange API
   var default_params = { 
@@ -72,6 +73,7 @@ async function scrape_product(mongo, product_name, options) {
     }
 
     if (bulkWrite.length > 1000) {
+      num_documents += bulkWrite.length;
       bulkWrite = await bulkWriteDocuments(collection, bulkWrite);
     }
     has_more = data.has_more;
@@ -80,10 +82,11 @@ async function scrape_product(mongo, product_name, options) {
 
   // clear out the last set of documents to write
   if (bulkWrite.length > 0) {
+    num_documents += bulkWrite.length;
     bulkWrite = await bulkWriteDocuments(collection, bulkWrite);
   }
 
-  return;
+  return num_documents;
 }
 
 database.get().then(async(mongo) => {
@@ -96,17 +99,15 @@ database.get().then(async(mongo) => {
   };
 
   var products_to_scrape = ['wepay', 'stripe', 'paypal', 'braintree', 'adyen', 'amazon payments', 'authorize.net', 'airtable'];
-
-  for (var i in products_to_scrape) {
-    promise_list.push(
-      scrape_product(mongo, products_to_scrape[i], options)
-    );
-  }
-
-  var r = await Promise.all(promise_list);
-  return r;
+  
+  var p = await Promise.map(products_to_scrape, async (product) => {
+    var r = await scrape_product(mongo, product, options);
+    return r;
+  }, { concurrency: 8 });
+  return p;
 })
 .then((r) => {
+  console.log('DONE: ', r);
   process.exit(1);
 })
 .catch((err) => {
