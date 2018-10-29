@@ -24,6 +24,17 @@ var initializers = {
       throw err;
     }
     collection.createIndex({ name: 1 }, { unique: true });
+  },
+  GitHub: async(db) => {
+    try {  
+      var collection = await db.createCollection('GitHub');
+    } catch (err) {
+      throw err;
+    }
+    // create indeces
+    await collection.createIndex({ id: 1 });
+    await collection.createIndex({ search_term: 1 });
+    await collection.createIndex({ id: 1, search_term: 1 }, { unique: true });
   }
 };
 
