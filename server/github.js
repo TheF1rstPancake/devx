@@ -13,14 +13,9 @@ const search = async function(query, params) {
   params.page = params.page === undefined ? null : params.page;
   params.pagesize = params.pagesize === undefined ? 100 : params.pagesize;
   
-  // need to do a little bit of cleanup for authorize.net and wepay search parameters
-  // authorize.net on GitHub goes by AuthorizeNet.  WePay also has a lot of "WeChatPay" apps associated with it, which are not valid
-  query = query === 'authorize.net' ? 'authorizenet' : query;
-  let topic = query !== 'wepay' ? `topic:${ query }` : `wepay payments topic:${ query }`;
-
   // if the page is present, then use it, otherwise ignore it
   let q = `query { 
-      search(query: "${ topic } is:public fork:false pushed:>${ params.fromdate }", type: REPOSITORY, first: ${ params.pagesize } ${ params.page !== null ? `after:  "${ params.page }"`: '' }){
+      search(query: "${ params.query } is:public fork:false pushed:>${ params.fromdate }", type: REPOSITORY, first: ${ params.pagesize } ${ params.page !== null ? `after:  "${ params.page }"`: '' }){
          pageInfo {
            endCursor 
            startCursor 
@@ -62,11 +57,16 @@ const search = async function(query, params) {
       } 
     }`;
   console.log('Requesting GitHub: ', params);
-  var d = await request.post(
+
+  try {
+    var d = await request.post(
     '/graphql', 
     { query: q }, 
     { headers: { 'Authorization': `bearer ${ process.env.GITHUB_ACCESS_TOKEN }` } }
   );
+  } catch (err) {
+    throw err;
+  }
   return d.data;
 };
 

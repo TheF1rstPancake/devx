@@ -1,4 +1,5 @@
 const database = require('../server/database');
+var utilities = require('./utilities');
 
 async function github_vs_stack(mongo) {
   var collection = await mongo.collection('GitHub');
@@ -6,7 +7,7 @@ async function github_vs_stack(mongo) {
   var results = await collection.aggregate([
     {
       $group: {
-        _id: '$search_term',
+        _id: '$product',
         repos: { $sum: 1 },
         stars: { $sum: '$stargazers.totalCount' }
       }
@@ -22,7 +23,7 @@ async function github_vs_stack(mongo) {
       $lookup: {
         from: 'StackOverflow',
         localField: '_id',
-        foreignField: 'search_term',
+        foreignField: 'product',
         as: 'stack'
       }
     },
@@ -39,24 +40,12 @@ async function github_vs_stack(mongo) {
   return results;
 }
 
-function toCsv(data) {
-  var out = [];
-  var header = Object.keys(data[0]).join(', ');
-  out.push(header);
-
-
-  for (var i in data) {
-    var row = Object.values(data[i]).join(', ');
-    out.push(row);
-  }
-  return out.join('\n');
-}
 
 if (require.main === module) {
   database.get().then(async(mongo) => {
     var gh = await github_vs_stack(mongo);
     
-    var output = toCsv(gh);
+    var output = utilities.toCsv(gh);
     return output;
     
   }).then((results) => {

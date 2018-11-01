@@ -3,6 +3,8 @@ const mongodb = require('mongodb');
 var url = 'mongodb://localhost:27017/mydb';
 var MongoClient = mongodb.MongoClient;
 
+
+// "global" holder for the database connection
 var database = null;
 
 var initializers = {
@@ -14,8 +16,8 @@ var initializers = {
     }
     // create indeces
     await collection.createIndex({ id: 1 });
-    await collection.createIndex({ search_term: 1 });
-    await collection.createIndex({ id: 1, search_term: 1 }, { unique: true });
+    await collection.createIndex({ product: 1 });
+    await collection.createIndex({ id: 1, product: 1 }, { unique: true });
   },
   Products: async(db) => {
     try {  
@@ -33,8 +35,8 @@ var initializers = {
     }
     // create indeces
     await collection.createIndex({ id: 1 });
-    await collection.createIndex({ search_term: 1 });
-    await collection.createIndex({ id: 1, search_term: 1 }, { unique: true });
+    await collection.createIndex({ product: 1 });
+    await collection.createIndex({ id: 1, product: 1 }, { unique: true });
   }
 };
 
