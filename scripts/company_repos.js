@@ -1,4 +1,3 @@
-const database = require('../server/database');
 var utilities = require('./utilities');
 
 async function company_owned(db) {
@@ -11,7 +10,13 @@ async function company_owned(db) {
           $cond: {
             if: { $eq: ['$product', 'authorize.net'] },
             then: 'authorizenet',
-            else: '$product'
+            else: {
+              $cond: {
+                if: { $eq: ['$product', 'smartsheet'] },
+                then: 'smartsheet-platform',
+                else: '$product'
+              }
+            }
           }
         },
         stargazers: 1,
@@ -108,18 +113,15 @@ async function company_owned(db) {
   return results;
 }
 
+async function run(database) {
+  var results = await company_owned(database);
+  results = utilities.sortData(results);
+  results = utilities.toCsv(results);
+  await utilities.writeToFile('company_repos.csv', results);
+  return results;
+}
+
 // main script
 if (require.main === module) {
-  database.get().then(async (db) => {
-    var results = await company_owned(db);
-    results = utilities.toCsv(results);
-    return results;
-
-  }).then((results) => {
-    console.log('DONE:\n', results, '\n-------------');
-    process.exit(0);
-  }).catch((err) => {
-    console.log('FAILED: ', err);
-    process.exit(1);
-  });
+  utilities.run(run);
 }

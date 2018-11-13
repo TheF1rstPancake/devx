@@ -1,0 +1,1 @@
+This is the default folder where we output the data from our different scripts

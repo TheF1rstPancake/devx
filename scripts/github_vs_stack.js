@@ -1,4 +1,3 @@
-const database = require('../server/database');
 var utilities = require('./utilities');
 
 async function github_vs_stack(mongo) {
@@ -40,19 +39,14 @@ async function github_vs_stack(mongo) {
   return results;
 }
 
+async function run(database) {
+  var gh = await github_vs_stack(database);
+  gh = utilities.sortData(gh);
+  var output = utilities.toCsv(gh);
+  await utilities.writeToFile('github_vs_stack.csv', output);
+  return output;
+}
 
 if (require.main === module) {
-  database.get().then(async(mongo) => {
-    var gh = await github_vs_stack(mongo);
-    
-    var output = utilities.toCsv(gh);
-    return output;
-    
-  }).then((results) => {
-    console.log('DONE: \n', results, '\n----------------');
-    process.exit(0);
-  }).catch((err) => {
-    console.log('FAILED: ', err);
-    process.exit(1);
-  });
+  utilities.run(run);
 }

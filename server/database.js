@@ -50,9 +50,9 @@ const initialize = async(db) => {
   return db;
 };
 
-const connect = async () => {
+const connect = () => {
   return new Promise((resolve, reject) => {
-    MongoClient.connect(url, function(err, client) {
+    MongoClient.connect(url,  { useNewUrlParser: true }, function(err, client) {
       if (err) {
         reject(err);
       }
@@ -60,7 +60,7 @@ const connect = async () => {
       initialize(database)
         .then(() => {resolve(database);})
         .catch(reject);
-    });
+    }, );
   });
 };
 

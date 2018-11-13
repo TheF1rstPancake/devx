@@ -141,7 +141,6 @@ async function scrape_product_github(mongo, product_name, options) {
     // put a limiter just in case we ever approach the 30 calls per second
     var can = github_limiter.tryRemoveTokens(1);
     while (!can) {
-      console.log('PAUSED: ', can);
       can = github_limiter.tryRemoveTokens(1);
     } 
     

@@ -16,6 +16,23 @@ module.exports = {
       }
     },
     airtable: {},
+    asana: {},
+    smartsheet: {
+      github: {
+        query: 'smartsheet'
+      }
+    },
+    wrike: {},
+    'monday.com': {
+      github: {
+        query: 'dapulse'
+      },
+      stackoverflow: {
+        query: 'dapulse'
+      }
+    },
+    trello: {},
+    quickbase: {},
     slack: {
       stackoverflow: {
         tagged: 'slack-api'

@@ -1,4 +1,3 @@
-const database = require('../server/database');
 var utilities = require('./utilities');
 
 async function answered_questions(db) {
@@ -55,17 +54,15 @@ async function answered_questions(db) {
   return results;
 }
 
+async function run(database) {
+  var results = await answered_questions(database);
+  results = utilities.sortData(results);
+  results = utilities.toCsv(results);
+  await utilities.writeToFile('answered_questions_ratio.csv', results);
+  return results;
+}
+
 // main script
 if (require.main === module) {
-  database.get().then(async (db) => {
-    var results = await answered_questions(db);
-    results = utilities.toCsv(results);
-    return results;
-  }).then((results) => {
-    console.log('DONE:\n', results, '\n-------------');
-    process.exit(0);
-  }).catch((err) => {
-    console.log('FAILED: ', err);
-    process.exit(1);
-  });
+  utilities.run(run);
 }
